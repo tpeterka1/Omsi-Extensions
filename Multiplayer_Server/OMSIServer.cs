@@ -11,7 +11,7 @@ internal class OMSIServer
     {
         Dictionary<int, Client>? Clients = new Dictionary<int, Client>();
         Telepathy.Server server = new Telepathy.Server();
-        server.Start(1337);
+        server.Start(12345);
 
         Console.WriteLine("Server started. Press Ctrl+C to stop...");
 
@@ -27,7 +27,7 @@ internal class OMSIServer
                         Console.WriteLine($"Client connected: {server.GetClientAddress(msg.connectionId)}");
                         break;
                     case EventType.Data:
-                        MessageParser.ParseMessage(msg.data, Clients[msg.connectionId], server);
+                        MessageParser.ParseMessage(msg.data, Clients[msg.connectionId], server, Clients);
                         break;
                     case EventType.Disconnected:
                         Console.WriteLine($"Client disconnected: {Clients[msg.connectionId].ClientId}");

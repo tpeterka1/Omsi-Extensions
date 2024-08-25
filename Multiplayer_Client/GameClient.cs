@@ -16,19 +16,18 @@ namespace Multiplayer_Client
         public Tuple<int, long, long> LastPing;
         private OmsiHook.OmsiHook omsi;
         private Dictionary<int, OmsiRoadVehicleInst> Vehicles = new Dictionary<int, OmsiRoadVehicleInst>();
-        public GameClient() {
+        public GameClient(int playerId) {
             omsi = new OmsiHook.OmsiHook();
-            omsi.AttachToOMSI().Wait();
-            var OMSIRM = omsi.RemoteMethods;
-            OMSIRM.OmsiSetCriticalSectionLock(omsi.Globals.ProgamManager.CS_MakeVehiclePtr).ContinueWith((_) =>
+            try
             {
-                OMSIRM.MakeVehicle(@"Vehicles\GPM_MAN_LionsCity_M\MAN_A47.bus", __copyToMainList: true).ContinueWith((id) =>
-                {
-                    Console.WriteLine($"Spawned Vehicle ID: {id.Result}");
-                    Vehicles[0] = omsi.Globals.RoadVehicles.FList[1];
-                    OMSIRM.OmsiReleaseCriticalSectionLock(omsi.Globals.ProgamManager.CS_MakeVehiclePtr).ContinueWith((_) => Console.WriteLine($"Unlock"));
-                });
-            });
+                omsi.AttachToOMSI().Wait(10000);
+                Console.WriteLine("Připojeno k OMSI");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Chyba připojení k OMSI: {ex.Message}");
+            }
+            Vehicles[playerId] = omsi.GetRoadVehicleInst(playerId);
         }
 
         int i = 0;
@@ -36,9 +35,11 @@ namespace Multiplayer_Client
         {
             if (Vehicles.TryGetValue(update.ID, out var vehicle))
             {
-                if (i % 20 == 0)
+                if (update.ID == omsi.Globals.PlayerVehicleIndex) return;
+                //if (i % 20 == 0)
                     vehicle.Position = update.position;
                 vehicle.Rotation = update.rotation;
+                Console.WriteLine($"[{update.ID}] Applying velocity: {update.velocity.x} {update.velocity.y} {update.velocity.z}");
                 vehicle.Velocity = update.velocity;
                 vehicle.MyKachelPnt = update.tile;
                 vehicle.RelMatrix = update.relmatrix;
@@ -53,9 +54,9 @@ namespace Multiplayer_Client
                 vehicle.AbsPosition = absPosMat;
                 vehicle.AbsPosition_Inv = absPosMatInv;
                 vehicle.Used_RelVec = ((Matrix4x4)update.relmatrix).Translation;
-                vehicle.AI_Blinker_L = 1;
-                vehicle.AI_Blinker_R = 1;
-                vehicle.AI_var = 1;
+                //vehicle.AI_Blinker_L = 1;
+                //vehicle.AI_Blinker_R = 1;
+                //vehicle.AI_var = 1;
 
 
                 //vehicle.AbsPosition = update.abs_position;
@@ -64,22 +65,26 @@ namespace Multiplayer_Client
             }
             else
             {
-                
+                Console.WriteLine($"Client ID {update.ID} doesn't exist, creating");
+                Vehicles[update.ID] = omsi.GetRoadVehicleInst(update.ID);
+                UpdateVehicles(update);
             }
         }
 
-        public void Tick(Telepathy.Client client)
+        public void Tick(Telepathy.Client client, int playerId)
         {
-            if (omsi.Globals.PlayerVehicle.IsNull || !client.Connected)
+            if (omsi.GetRoadVehicleInst(playerId).IsNull || !client.Connected)
                 return;
 
-            var vehicle = omsi.Globals.PlayerVehicle;
-            Console.WriteLine($"\x1b[8;0HP:{vehicle.Position}/{vehicle.MyKachelPnt}\x1b[9;0HR:{vehicle.Rotation}\x1b[10;0HV:{vehicle.Velocity}\x1b[11;0HB:{vehicle.Acc_Local} / {((Vehicles.ContainsKey(0)) ? (Vehicles[0].Acc_Local.ToString()):"-")}");
+            var vehicle = omsi.GetRoadVehicleInst(playerId);
+            //Console.WriteLine($"\x1b[8;0HP:{vehicle.Position}/{vehicle.MyKachelPnt}\x1b[9;0HR:{vehicle.Rotation}\x1b[10;0HV:{vehicle.Velocity}\x1b[11;0HB:{vehicle.Acc_Local} / {((Vehicles.ContainsKey(0)) ? (Vehicles[0].Acc_Local.ToString()):"-")}");
             byte[] buff = new byte[Unsafe.SizeOf<OMSIMPMessages.Player_Position_Update>() + 4];
             int out_pos = 0;
+            Console.WriteLine($"[{playerId}] Sending velocity: {vehicle.Velocity.x} {vehicle.Velocity.y} {vehicle.Velocity.z}");
             FastBinaryWriter.Write(buff, ref out_pos, OMSIMPMessages.Messages.UPDATE_PLAYER_POSITION);
             FastBinaryWriter.Write(buff, ref out_pos, new OMSIMPMessages.Player_Position_Update()
             {
+                ID = playerId,
                 position = vehicle.Position,
                 tile = vehicle.MyKachelPnt,
                 rotation = vehicle.Rotation,

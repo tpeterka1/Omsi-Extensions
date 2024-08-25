@@ -25,6 +25,7 @@ public static class OMSIMPMessages
     [StructLayout(LayoutKind.Sequential)]
     public struct Player_Position_Update
     {
+        public int ID;
         public OmsiPoint tile;
         public D3DQuaternion rotation;
         public D3DVector velocity;
@@ -43,6 +44,5 @@ public static class OMSIMPMessages
         public D3DVector position;
         public D3DMatrix relmatrix;
         public D3DVector acclocal;
-
     }
 }

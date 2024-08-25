@@ -12,7 +12,7 @@ namespace Multiplayer_Server
     {
         readonly static int MAJOR_VERSION = 1;
         readonly static int MINOR_VERSION = 0;
-        public static void ParseMessage(byte[] message, Client client, Telepathy.Server server)
+        public static void ParseMessage(byte[] message, Client client, Telepathy.Server server, Dictionary<int, Client>? Clients)
         {
             message.AsSpan<byte>(0, message.Length);
             int parse_pos = 0;
@@ -30,23 +30,26 @@ namespace Multiplayer_Server
 
                 case OMSIMPMessages.Messages.UPDATE_PLAYER_POSITION:
                     {
-                        var position = FastBinaryReader.Read<OMSIMPMessages.Player_Position_Update>(message, ref parse_pos);
-                        Console.WriteLine($"\u001b[8;0HP:{position.position}/{position.tile}\u001b[9;0HR:{position.rotation}\u001b[10;0HV:{position.velocity}");
+                        var data = FastBinaryReader.Read<OMSIMPMessages.Player_Position_Update>(message, ref parse_pos);
+                        //Console.WriteLine($"\u001b[8;0HP:{data.position}/{data.tile}\u001b[9;0HR:{data.rotation}\u001b[10;0HV:{data.velocity}");
 
                         byte[] buff = new byte[Unsafe.SizeOf<OMSIMPMessages.Vehicle_Position_Update>() + 4];
                         int out_pos = 0;
                         FastBinaryWriter.Write(buff, ref out_pos, OMSIMPMessages.Messages.UPDATE_VEHICLE_POSITION);
                         FastBinaryWriter.Write(buff, ref out_pos, new OMSIMPMessages.Vehicle_Position_Update() { 
-                            ID = 0,
-                            rotation = position.rotation,
-                            tile = position.tile,
-                            velocity = position.velocity,
-                            position = (new D3DVector(position.position.x + 4, position.position.y, position.position.z)),
-                            relmatrix = position.relmatrix,
-                            acclocal = position.acclocal,
+                            ID = data.ID,
+                            rotation = data.rotation,
+                            tile = data.tile,
+                            velocity = data.velocity,
+                            position = data.position,
+                            relmatrix = data.relmatrix,
+                            acclocal = data.acclocal
                         });
-                        server.Send(client.ClientId, buff);
 
+                        foreach (var cl in Clients)
+                        {
+                            server.Send(cl.Value.ClientId, buff);
+                        }
                     }
                     break;
 

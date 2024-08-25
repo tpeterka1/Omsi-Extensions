@@ -1,15 +1,50 @@
 ﻿using Multiplayer_Client;
 using System;
+using System.Net;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using Telepathy;
 
 class OMSIClient
 {
+    
     static void Main(string[] args)
     {
+        int playerId = 0;
+        Console.Write("Zadejte své ID hráče:");
+        if (int.TryParse(Console.ReadLine(), out int id))
+        {
+            if (id < 0)
+            {
+                Console.WriteLine("Chyba: Musíte zadat platné číselné ID hráče!");
+                Environment.Exit(0);
+            }
+            playerId = id;
+        }
+        else
+        {
+            Console.WriteLine("Chyba: Musíte zadat platné číselné ID hráče!");
+            Environment.Exit(0);
+        }
+
+        string ipaddr = "25.55.37.153";
+        //Console.Write("Zadejte IP adresu:");
+        //if (IPAddress.TryParse(Console.ReadLine(), out IPAddress ip))
+        //{
+        //    ipaddr = ip.MapToIPv4().ToString();
+        //}
+        //else
+        //{
+        //    if (ip != null && !ip.MapToIPv4().ToString().Equals(""))
+        //    {
+        //        Console.WriteLine("Chyba: Musíte zadat platnou IP adresu!");
+        //        Environment.Exit(0);
+        //    }
+        //}
+
         Client client = new Client();
-        GameClient gameClient = new GameClient();
-        client.Connect("127.0.0.1", 1337);
+        GameClient gameClient = new GameClient(playerId);
+        client.Connect(ipaddr, 12345);
 
 
         while (true)
@@ -42,7 +77,7 @@ class OMSIClient
                         break;
                 }
             }
-            gameClient.Tick(client);
+            gameClient.Tick(client, playerId);
             System.Threading.Thread.Sleep(33);
         }
         client.Disconnect();
